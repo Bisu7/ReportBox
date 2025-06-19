@@ -36,15 +36,36 @@ export default function ProblemReportApp() {
     }));
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async(e) => {
     const selectedFiles = Array.from(e.target.files);
     const validFiles = selectedFiles.filter(file => {
       const isValidType = file.type.startsWith('image/') || file.type.startsWith('video/');
       const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB limit
       return isValidType && isValidSize;
     });
-
     setFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
+
+    const file = selectedFiles[0];
+    if(!file) return;
+
+    const data = new FormData();
+    data.append("file",file);
+    data.append("upload_preset","ReportBox");
+    data.append("cloud_name","dc4z5hijt"); 
+
+    const fileType = file.type.startsWith("video/") ? "video" : "image"; 
+    const uploadUrl = `https://api.cloudinary.com/v1_1/dc4z5hijt/${fileType}/upload`;
+
+    try{
+        const res = await fetch(uploadUrl,{
+            method:"POST",
+            body: data
+        })
+        const uploadedImageUrl = await res.json()
+        console.log(uploadedImageUrl.secure_url)
+    }catch(err){
+        console.error(err);
+    }
   };
 
   const removeFile = (index) => {
