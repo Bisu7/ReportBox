@@ -10,12 +10,14 @@ export default function ProblemReportApp() {
     category: '',
     title: '',
     description: '',
-    priority: 'medium'
+    priority: 'medium',
+    mediaURL: ''
   });
   
   const [files, setFiles] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const categories = [
     'Infrastructure',
@@ -43,36 +45,65 @@ export default function ProblemReportApp() {
       const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB limit
       return isValidType && isValidSize;
     });
+    
+    if (validFiles.length === 0) {
+      alert('Please select valid image or video files under 50MB');
+      return;
+    }
+
     setFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
+    setIsUploading(true);
 
-    const file = selectedFiles[0];
-    if(!file) return;
+    try {
+      // Upload only the first file to get the URL
+      const file = validFiles[0];
+      const data = new FormData();
+      data.append("file", file);
+      data.append("upload_preset", "ReportBox");
+      data.append("cloud_name", "dc4z5hijt"); 
 
-    const data = new FormData();
-    data.append("file",file);
-    data.append("upload_preset","ReportBox");
-    data.append("cloud_name","dc4z5hijt"); 
+      const fileType = file.type.startsWith("video/") ? "video" : "image"; 
+      const uploadUrl = `https://api.cloudinary.com/v1_1/dc4z5hijt/${fileType}/upload`;
 
-    const fileType = file.type.startsWith("video/") ? "video" : "image"; 
-    const uploadUrl = `https://api.cloudinary.com/v1_1/dc4z5hijt/${fileType}/upload`;
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        body: data
+      });
 
-    try{
-        const res = await fetch(uploadUrl,{
-            method:"POST",
-            body: data
-        })
-        const uploadedImageUrl = await res.json()
-        console.log(uploadedImageUrl.secure_url)
-    }catch(err){
-        console.error(err);
+      if (!res.ok) {
+        throw new Error(`Upload failed: ${res.status}`);
+      }
+
+      const uploadedResult = await res.json();
+      console.log('Cloudinary URL:', uploadedResult.secure_url);
+      
+      // Store the Cloudinary URL in formData
+      setFormData(prev => ({
+        ...prev,
+        mediaURL: uploadedResult.secure_url,
+      }));
+
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const removeFile = (index) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+    // If removing the first file, clear the mediaURL
+    if (index === 0) {
+      setFormData(prev => ({
+        ...prev,
+        mediaURL: ''
+      }));
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async(e) => {
+    e.preventDefault();
     if (!formData.name || !formData.email || !formData.location || !formData.category || !formData.title || !formData.description) {
       alert('Please fill in all required fields');
       return;
@@ -80,10 +111,27 @@ export default function ProblemReportApp() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Log the complete form data including mediaURL
+      console.log('Form data being submitted:', formData);
+      
+      const response = await fetch(`http://localhost:3000/api/ReportForm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Submit response:', result);
+      
       setSubmitted(true);
+      
       // Reset form after 3 seconds
       setTimeout(() => {
         setSubmitted(false);
@@ -95,11 +143,18 @@ export default function ProblemReportApp() {
           category: '',
           title: '',
           description: '',
-          priority: 'medium'
+          priority: 'medium',
+          mediaURL: ''
         });
         setFiles([]);
       }, 3000);
-    }, 2000);
+      
+    } catch (error) {
+      console.error("Submit error:", error);
+      alert('Failed to submit report. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -269,14 +324,31 @@ export default function ProblemReportApp() {
                   onChange={handleFileUpload}
                   className="hidden"
                   id="file-upload"
+                  disabled={isUploading}
                 />
                 <label
                   htmlFor="file-upload"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors"
+                  className={`inline-flex items-center px-4 py-2 rounded-md cursor-pointer transition-colors ${
+                    isUploading 
+                      ? 'bg-gray-400 text-white cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
-                  Select Files
+                  {isUploading ? 'Uploading...' : 'Select Files'}
                 </label>
               </div>
+
+              {/* Show current mediaURL */}
+              {formData.mediaURL && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-700">
+                    ✓ Media uploaded successfully: 
+                    <a href={formData.mediaURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
+                      View file
+                    </a>
+                  </p>
+                </div>
+              )}
 
               {/* File Preview */}
               {files.length > 0 && (
@@ -306,7 +378,7 @@ export default function ProblemReportApp() {
             <div className="flex items-center justify-center pt-6">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
               >
                 {isSubmitting ? (

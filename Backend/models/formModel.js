@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 
-const UserSchema = new Schema({
+const formData = new Schema({
   name: {
     type: String,
     required: true,
@@ -18,9 +18,24 @@ const UserSchema = new Schema({
     type: String,
     required: true
   },
-  problemTitle: {
+  category: {
     type: String,
     required: true
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  priority: {
+    type: String,
+    required: true
+  },
+  mediaURL: {
+    type: String,
   },
   createdAt: {
     type: Date,
@@ -28,5 +43,5 @@ const UserSchema = new Schema({
   }
 });
 
-const UserModel = model("User", UserSchema);
-export default UserModel; // ✅ ES Module export
+const formModel = model("formData", formData);
+export default formModel; // ✅ ES Module export
