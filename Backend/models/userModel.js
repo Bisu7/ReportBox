@@ -1,13 +1,13 @@
-import { Schema,model } from "mongoose";
+import { Schema, model } from "mongoose";
 
 const UserSchema = new Schema({
-    name: {
+  name: {
     type: String,
     required: true,
     maxlength: 50
   },
   email: {
-    type: email,
+    type: String, // ✅ Fix: "email" is not a valid type
     required: true
   },
   phone: {
@@ -24,10 +24,9 @@ const UserSchema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now,
-  },
+    default: Date.now
+  }
 });
 
-const UserModel = model("User",UserSchema);
-
-module.exports = UserModel
+const UserModel = model("User", UserSchema);
+export default UserModel; // ✅ ES Module export

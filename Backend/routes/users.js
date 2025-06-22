@@ -1,7 +1,7 @@
-const express = require('express');
-const router = express.Router();
+import express from 'express';
+import User from '../models/userModel.js';
 
-const User = require("../models/userModel");
+const router = express.Router();
 
 //read
 router.get('/users', async(req,res) => {
@@ -21,9 +21,15 @@ router.post('/users', async(req,res) => {
         const {name,email,phone,location,problemTitle} = req.body;
         const newUser = new User({name,email,phone,location,problemTitle})
         await newUser.save();
+        res.status(200).json({
+            success:true,
+            user: newUser
+        })
     }catch(err){
         res.status(500).json({
             message: err.message
         })
     }
 })
+
+export default router;
